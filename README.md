@@ -1,106 +1,183 @@
-# OLIST Logistics Analysis — JET SODA SQL Practice
+# DataCo Smart Supply Chain Analytics
 
-SQL practice queries on the [Brazilian E-Commerce (OLIST) dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) from Kaggle, framed as real logistics and operations questions in the style of **JET SODA** (Just Eat Takeaway's Global Scoober Operations Data Analytics team) and **BOL.com**.
+**SQL Analysis Portfolio | Logistics & Marketing Intelligence**
 
----
-
-## Context
-
-This repo documents SQL practice sessions for a **Medior Data Analyst** role focused on logistics operations. All questions are framed as stakeholder requests from two fictional analysts:
-
-- **Lars Visser** — Head of Courier Operations, JET SODA Amsterdam. Focused on delivery performance, SLA breaches, and last-mile efficiency.
-- **Beatriz Souza** — Senior Logistics Data Analyst, JET SODA Brazil Hub. Focused on seller performance, freight costs, and regional supply chain health.
+Sahil Changotra • The Hague, Netherlands • March 2026
 
 ---
 
-## Dataset
+## 📋 Repository Overview
 
-| Table | Description |
+| Field | Detail |
 |---|---|
-| `olist_orders` | Order lifecycle — purchase, approval, delivery timestamps |
-| `olist_order_items` | Line items — product_id, seller_id, price, freight_value |
-| `olist_customers` | Customer data — customer_unique_id, state, city |
-| `olist_sellers` | Seller data — seller_id, state, city |
-| `olist_products` | Product catalogue — product_id, category_name |
-| `olist_order_reviews` | Reviews — order_id, review_score |
+| Dataset | DataCo Smart Supply Chain — Kaggle |
+| Database | dataco_db — Schema: supply_chain — Table: supply_chain.orders |
+| Rows | 180,519 orders — Date Range: 2015-01-01 to 2018-01-31 |
+| Markets | Africa, Europe, LATAM, Pacific Asia, USCA |
+| Segments | Consumer, Corporate, Home Office |
+| Shipping Modes | First Class, Same Day, Second Class, Standard Class |
+| Target Roles | Data Analyst — JET SODA Amsterdam \| BOL Retail Media Netherlands |
+| Stack | PostgreSQL / DataGrip • Python (Jupyter) • Tableau Public • GitHub |
+
+> ⚠️ **Critical Data Quality Issue — First Class Shipping**
+> First Class shipping mode has 100% late delivery rate with no on-time records. This is a known DataCo dataset anomaly. All queries involving shipping mode include a `data_quality_flag` column to flag this explicitly.
+
+> 📉 **Volume Drop — October 2017 Onwards**
+> Order volume drops from ~70–100 orders/day to ~25–40 orders/day from October 2017. Results from this period should be interpreted with caution.
 
 ---
 
-## Queries
+## 🔧 Standard Query Rules
 
-### Q1 — Delivery Performance Summary
-**Stakeholder:** Lars Visser  
-**Question:** Across all delivered orders, what % arrived Early, On Time, or Late?  
-**Key concepts:** `CASE WHEN`, window function `%`, two-CTE chain  
-**Key insight:** ~92% of OLIST orders arrive *early* — sellers pad estimated delivery dates aggressively. Lars's takeaway: tighten ETAs and use the buffer for route optimisation instead.
+All DataCo queries apply these filters and definitions consistently:
 
----
-
-### Q2 — Seller Performance Scorecard
-**Stakeholder:** Lars Visser  
-**Question:** For each seller (10+ orders) — total orders, revenue, avg delivery days, on-time rate, avg review score. Rank by revenue.  
-**Key concepts:** Multi-table JOIN, `AVG(flag) * 100` for rate (cleaner than `SUM/COUNT`), `HAVING`, `RANK() OVER`  
-**Key insight:** On-time delivery rate is the best proxy for partner quality. Sellers below 70% on-time rate are candidates for courier network audit.
-
----
-
-### Gap 5 — Customer Scorecard (Multi-table JOIN)
-**Stakeholder:** Lars Visser + Beatriz Souza  
-**Question:** For each customer (2+ orders) — total orders, revenue, avg review, avg delivery days, SLA breach %, and customer tier (VIP / Regular / Occasional). Rank by revenue.  
-**Key concepts:** 4-table JOIN, granularity control in base CTE, SLA breach flag (1/0), `NULLIF`, `CASE` tier label, `RANK()`  
-**Key insight:** VIP customers (>R$1000) consistently have 0% SLA breach and review scores above 4. 'Occasional' customers with high breach rates are the highest churn risk.
-
----
-
-### Bonus — Freight Cost as % of Revenue by Category
-**Stakeholder:** Beatriz Souza  
-**Question:** For each category (100+ orders) — total orders, freight, avg freight per order, and freight as % of total transaction value.  
-**Key concepts:** `JOIN order_items → products`, `NULLIF`, `COALESCE` for nulls, freight ratio formula  
-**Key insight:** Categories where freight > 25% of total value need delivery fee repricing. Heavy/bulky categories typically breach this threshold.
-
----
-
-## SQL Patterns Practiced
-
-| Pattern | Used In |
+| Rule | Definition |
 |---|---|
-| Two-CTE chain | Q1, Q2, Gap 5 |
-| `SUM(COUNT(*)) OVER()` for window % | Q1 |
-| `AVG(flag) * 100` for rate (vs SUM/COUNT) | Q2 |
-| `CASE WHEN` tier label in final SELECT | Gap 5 |
-| `NULLIF` for division safety | Gap 5, Bonus |
-| `HAVING` after `GROUP BY` (not WHERE on alias) | Q2, Bonus |
-| `RANK() OVER (ORDER BY ... DESC)` | Q2, Gap 5 |
-| 4-table JOIN with granularity control | Gap 5 |
-| `COALESCE` for NULL category names | Bonus |
-| `DATE_PART('day', ts1 - ts2)` delivery days | Q2, Gap 5 |
+| Standard Filter | `WHERE order_status IN ('COMPLETE', 'CLOSED') AND delivery_status != 'Shipping canceled'` |
+| SLA Breach | `days_for_shipping_real > days_for_shipment_scheduled + 1` |
+| Late Delivery | `delivery_status = 'Late delivery'` |
+| Schema Prefix | Always use `supply_chain.orders` — never just `orders` |
+| First Class Flag | Always add `data_quality_flag` column — 100% late delivery, DataCo anomaly |
 
 ---
 
-## Lessons Learned
+## 📁 Repository Structure
 
-1. **Granularity is everything.** Before writing any CTE, ask: *what is one row here?* One order-item? One order? One customer? Getting this wrong causes silent aggregation bugs.
-2. **`DISTINCT` + `GROUP BY` is redundant.** `GROUP BY` already guarantees one row per group. Don't layer `DISTINCT` on top.
-3. **`> 2` vs `>= 2`.** "2+ orders" means `>= 2`, not `> 2`. Always re-read the business requirement.
-4. **`AVG(flag)` is cleaner than `SUM(flag)/COUNT(*)`** for percentage rates when the flag is already 0/1.
-5. **`NULLIF(expr, 0)` everywhere there's division.** Prevents runtime errors on zero denominators.
-6. **Window functions need the right granularity first.** `LAG()` is only meaningful after you've aggregated to one row per time period. Applying it at customer-month level gives meaningless results.
-
----
-
-## Next Practice Topics
-
-- [ ] INTERVAL arithmetic (30-day revenue windows, SMLY)
-- [ ] 7-day and 30-day rolling averages (`ROWS BETWEEN`)
-- [ ] Seasonality analysis (90-day lag, monthly index)
-- [ ] `FILTER(WHERE ...)` clause (weekday vs weekend, holiday vs regular)
-- [ ] BOL advertising questions (ad ROI, category cannibalism, repeat purchase rate)
-- [ ] Window functions: `PERCENT_RANK()`, `NTILE()`, `ROWS UNBOUNDED PRECEDING`
+```
+dataco-supply-chain-analysis/
+├── sql/
+│   ├── logistics/       ← LQ1–LQ12 complete ✅
+│   ├── marketing/       ← MQ1–MQ9 pending 🔜
+│   ├── sales/           ← SQ1–SQ4 pending 🔜
+│   ├── cohorts/         ← LQ3b, LQ3c, MQ7b, MQ7c pending 🔜
+│   └── dll/             ← DLL Q1–Q5 pending 🔜
+├── data/                ← Exported CSVs from DataGrip
+├── tableau/             ← Tableau workbook + screenshots (this weekend)
+└── README.md
+```
 
 ---
 
-## Setup
+## 🚚 Logistics SQL Questions (LQ1–LQ12)
 
-Database: PostgreSQL via DataGrip  
-Schema: `kaggle.*`  
-Dataset source: [Kaggle — Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce)
+**Stakeholders:** Lars Visser (JET SODA Logistics Ops) | Emma Clarke (DataCo Network Planning) | Beatriz Souza (JET SODA Senior Logistics)
+
+| # | Business Question | Stakeholder | SQL Concepts | Status |
+|---|---|---|---|---|
+| LQ1 | Monthly on-time vs late delivery rate + 3-month rolling avg + alert flag | Lars Visser | Rolling AVG, CASE flag, FILTER(WHERE) | ✅ Done |
+| LQ2 | Shipping mode scorecard — real vs scheduled days, delay gap, RANK() | Emma Clarke | AVG, RANK(), gap calc, data_quality_flag | ✅ Done |
+| LQ3 | SLA breach rate by market, minimum 1,000 orders, ranked | Lars Visser | INTERVAL breach, HAVING, RANK() | ✅ Done |
+| LQ4 | Shipping mode YoY improvement — LAG(12) same month last year | Emma Clarke | LAG(12), PARTITION BY, trend flag | ✅ Done |
+| LQ5 | 7-day + 30-day rolling SLA breach daily + worsening flag | Emma Clarke | ROWS BETWEEN, two windows, WHERE >= 5 | ✅ Done |
+| LQ6 | Holiday season (Nov 15–Dec 31) vs regular period | Beatriz Souza | GROUP BY CASE, EXTRACT month/day | ✅ Done |
+| LQ7 | Weekend vs weekday order volume and late delivery rate | Emma Clarke | EXTRACT DOW, FILTER(WHERE) | ✅ Done |
+| LQ8 | Ghost shipments — orders with shipping gap > 5 days by mode | Lars Visser | Date diff, FILTER(WHERE), data_quality_flag | ✅ Done |
+| LQ9 | NTILE(4) delivery speed tiers before/after July 2017 | Beatriz Souza | NTILE(4), period flag before NTILE | ✅ Done |
+| LQ10 | Late delivery risk % by customer segment trend over time | Emma Clarke | 4-CTE pattern, DATE_TRUNC, LAG trend | ✅ Done |
+| LQ11 | Anomaly detection — real days > scheduled + 2 by shipping mode | Lars Visser | FILTER(WHERE), ratio flag, gap detection | ✅ Done |
+| LQ12 | Seasonality index — which months have highest late rates | Beatriz Souza | Two-layer aggregation, AVG OVER(), RANK() | ✅ Done |
+
+---
+
+## 📈 Marketing SQL Questions (MQ1–MQ9)
+
+**Stakeholders:** Sophie van Dijk (bol category marketing) | Noor Bakker (bol performance marketing) | Daan (bol product ops)
+
+| # | Business Question | Stakeholder | SQL Concepts | Status |
+|---|---|---|---|---|
+| MQ1 | Monthly revenue by department + YoY LAG(12) + growth % | Sophie van Dijk | LAG(12), YoY %, DATE_TRUNC | 🔜 Pending |
+| MQ2 | Discount simulation — 10% extra on below-avg categories | Noor Bakker | NTILE, UNION ALL, FILTER(WHERE) | 🔜 Pending |
+| MQ3 | Monthly seasonality index — highest revenue months | Sophie van Dijk | Two-layer aggregation, index calc | 🔜 Pending |
+| MQ4 | Weekend vs weekday revenue by customer segment | Noor Bakker | FILTER(WHERE), EXTRACT DOW | 🔜 Pending |
+| MQ5 | Summer sale impact (Jun–Aug) vs rest of year on revenue + profit | Sophie van Dijk | CASE period, UNION ALL | 🔜 Pending |
+| MQ6 | RFM segmentation — Champions/Loyals/At Risk using NTILE(4) | Noor Bakker | NTILE, MAX ref date, CASE | 🔜 Pending |
+| MQ7 | Revenue cohort — revenue in 30 days after first order | Sophie van Dijk | INTERVAL 30 days, LEAD() | 🔜 Pending |
+| MQ8 | A/B test — Corporate vs Consumer segment revenue t-score | Noor Bakker | STDDEV, CROSS JOIN, t-score formula | 🔜 Pending |
+| MQ9 | Samsung scenario — Technology category product ranking + market share | Daan | RANK(), market share %, window | 🔜 Pending |
+
+---
+
+## 🔗 Sales + Marketing Integrated (SQ1–SQ4)
+
+**Stakeholder:** Carlos (Revenue Analytics) | Emma Clarke + Sophie van Dijk
+
+| # | Business Question | Stakeholder | SQL Concepts | Status |
+|---|---|---|---|---|
+| SQ1 | 7-day rolling revenue + orders + top 5 revenue spike days | Carlos | ROWS BETWEEN 6 PRECEDING, RANK() | 🔜 Pending |
+| SQ2 | INTERVAL 90 days — same customer repeat flag + 90-day repeat revenue | Carlos | INTERVAL 90, LAG pattern | 🔜 Pending |
+| SQ3 | Customer segment x department revenue matrix | Emma + Sophie | CROSS JOIN, pivot-style | 🔜 Pending |
+| SQ4 | Profit ratio decline month over month by category | Carlos | LAG, month-over-month, trend flag | 🔜 Pending |
+
+---
+
+## 🔁 Cohort Analysis Questions
+
+| # | Business Question | Stakeholder | SQL Concepts | Status |
+|---|---|---|---|---|
+| LQ3b | Pacific Asia monthly SLA breach cohort — worsening over time? | Lars Visser | DATE_TRUNC cohort + LAG trend | 🔜 Pending |
+| LQ3c | Customer 90-day repeat cohort — % placing 2nd order in 90 days | Lars Visser | LEAD(), INTERVAL 90 days | 🔜 Pending |
+| MQ7b | Monthly revenue cohort retention — months 1, 2, 3 after acquisition | Sophie van Dijk | DATE_TRUNC, INTERVAL, cohort retention | 🔜 Pending |
+| MQ7c | Category 30-day repeat rate by customer segment | Noor Bakker | MIN first order, INTERVAL 30 days | 🔜 Pending |
+
+---
+
+## 🏭 DLL Process Mining Questions (DLL Q1–Q5)
+
+**Company:** DLL (De Lage Landen) — Eindhoven, Netherlands | **Role:** Process Mining and Data Analyst
+
+| # | Business Question | SQL Concepts | Status |
+|---|---|---|---|
+| DLL Q1 | End-to-end process time — bucket into Fast/Normal/Slow/Critical | Throughput time analysis, CASE buckets | 🔜 Pending |
+| DLL Q2 | Process deviations — orders where delivery was abnormal by seller state | Deviation from designed flow | 🔜 Pending |
+| DLL Q3 | Bottleneck report — avg time per stage, flag sellers > 2x network average | Bottleneck detection, CASE flag | 🔜 Pending |
+| DLL Q4 | Monthly process efficiency score per city: (on-time/total) x (avg review/5) | KPI + trend for process improvement | 🔜 Pending |
+| DLL Q5 | Root cause — review <= 2, top 5 combinations of seller state + category | Root cause analysis, multi-column GROUP BY | 🔜 Pending |
+
+---
+
+## 📊 Tableau Public Dashboard
+
+> 🗓️ **Planned for this Saturday / Sunday**
+
+| # | Dashboard Name | Contents | Status |
+|---|---|---|---|
+| 1 | Logistics Operations Analytics | Monthly delivery trend, shipping mode scorecard, SLA by market, YoY, rolling signals | 📊 Saturday |
+| 2 | Holiday & Seasonality Analytics | Holiday vs regular, weekend vs weekday, seasonality index, NTILE tiers | 📊 Saturday |
+| 3 | Marketing & Revenue Analytics | Revenue by department, RFM segments, discount simulation, A/B test | 📊 Sunday |
+
+🔗 Tableau Public Profile: [public.tableau.com/app/profile/sahil.changotra](https://public.tableau.com/app/profile/sahil.changotra)
+
+---
+
+## 🔑 Key Findings Summary
+
+> **Structural Finding across all 12 Logistics Questions:**
+> The ~57% late delivery rate is systemic and consistent across every dimension analysed — holiday vs regular (+0.73pp), weekend vs weekday (+0.37pp), all customer segments identical, pre/post July 2017 NTILE tiers unchanged, and seasonality index range only 0.98–1.02. The problem is network infrastructure, not situational factors.
+
+| Metric | Value | Source |
+|---|---|---|
+| Overall late delivery rate | ~57% every month — systemic | LQ1 |
+| Best shipping mode | Standard Class: -0.01 day gap | LQ2 |
+| Worst shipping mode | Second Class: +1.96 day gap, 79.54% late | LQ2 |
+| Best market (SLA breach) | Europe: 22.86% breach rate | LQ3 |
+| Worst market (SLA breach) | Pacific Asia: 23.92% breach rate | LQ3 |
+| First Class anomaly | 100% late delivery — data quality issue | LQ2, LQ8 |
+| Holiday season impact | +0.73pp vs regular — not meaningful | LQ6 |
+| Weekend vs weekday | +0.37pp — not meaningful | LQ7 |
+| Ghost shipments | Second Class only: 38.13% rate, +3.51 day gap | LQ8 |
+| NTILE tier change post-Jul 2017 | Fastest tier: 1.67 → 1.70 days (no improvement) | LQ9 |
+| Worst seasonality month | August: index 1.0226 (2.3% above avg) | LQ12 |
+| Best seasonality month | January: index 0.9765 (2.4% below avg) | LQ12 |
+
+---
+
+## 👤 About
+
+| Field | Detail |
+|---|---|
+| Name | Sahil Changotra |
+| Location | The Hague, Netherlands |
+| GitHub | [github.com/sahilmchangotra](https://github.com/sahilmchangotra) |
+| Tableau Public | [public.tableau.com/app/profile/sahil.changotra](https://public.tableau.com/app/profile/sahil.changotra) |
+| Target Roles | Data Analyst — JET SODA Amsterdam \| BOL Retail Media Netherlands \| DLL Eindhoven |
+| Session | March 2026 — Active Portfolio Development |
