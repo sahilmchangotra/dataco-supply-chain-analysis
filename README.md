@@ -57,7 +57,30 @@ dataco-supply-chain-analysis/
 ├── tableau/
 └── README.md
 ```
+## 📊 Tableau Public Dashboard
 
+**Dashboard Link:** https://public.tableau.com/app/profile/sahil.changotra/viz/DataCoSupplyChainAnalyticsJETSODABOLDLLEindhoven/DataCoSupplyChainAnalytics
+
+### Dashboard Structure
+
+| Story Point | Dashboard | Focus | Target Stakeholder |
+|---|---|---|---|
+| 1 | Executive Summary | KPI Scorecard · Revenue Trend · Late Rate Overview | All executives |
+| 2 | Logistics Performance | Late Rate by Mode · Delivery Gap Heatmap · SLA by Category | JET SODA — Lars Visser |
+| 3 | Sales & Revenue | Revenue Treemap · Market Share · Discount vs Profit | BOL — Sophie van Dijk |
+| 4 | DLL Financial View | Portfolio Profit Heatmap · Benefit per Order · Risk Analysis | DLL Eindhoven |
+
+### Key Dashboard Findings
+
+- **57.27% overall late rate** — systemic across all shipping modes and markets
+- **First Class 100% late rate** — confirmed data quality anomaly (scheduled days = 0)
+- **$16.1M total revenue** across 79,107 filtered orders (COMPLETE + CLOSED)
+- **11.04% profit margin** — discount strategy directly erodes margins
+- **Fan Shop = 46% of revenue** — extreme single-category concentration risk
+- **Second Class structurally broken** — 79.54% late rate + 38.13% ghost shipment rate
+
+### Stack
+PostgreSQL · DataGrip · Tableau Public
 ---
 
 ## 🚚 LOGISTICS (LQ1–LQ12) — ✅ All Complete
